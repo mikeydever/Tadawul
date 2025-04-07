@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tadawul Golden Cross Alert</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Tadawul Golden Cross Alert</h1>
+        <p>Saudi Stock Exchange (Tadawul) Golden Cross Scanner</p>
+    </header>
+
+    <main>
+        <section class="dashboard">
+            <div class="card">
+                <h2>Scan Status</h2>
+                <div id="scan-status">
+                    {% if latest_scan_results.is_scanning %}
+                        <p class="status scanning">Scan in progress...</p>
+                    {% elif latest_scan_results.last_scan_time %}
+                        <p class="status">Last scan: {{ latest_scan_results.last_scan_time }}</p>
+                        <p>Duration: {{ latest_scan_results.scan_duration }}</p>
+                    {% else %}
+                        <p class="status">No scans performed yet</p>
+                    {% endif %}
+                </div>
+                <button id="trigger-scan" class="primary-button" {% if latest_scan_results.is_scanning %}disabled{% endif %}>
+                    Run New Scan
+                </button>
+            </div>
+
+            <div class="card results-card">
+                <h2>Latest Results</h2>
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="golden-crosses">Golden Crosses</button>
+                    <button class="tab-button" data-tab="approaching-crosses">Approaching Crosses</button>
+                </div>
+                
+                <div id="golden-crosses" class="tab-content active">
+                    {% if latest_scan_results.golden_crosses %}
+                        <ul class="stock-list">
+                            {% for symbol in latest_scan_results.golden_crosses %}
+                                <li class="stock-item" data-symbol="{{ symbol }}">
+                                    <span class="symbol">{{ symbol }}</span>
+                                    <button class="view-details">View Details</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="no-results">No golden crosses detected in the latest scan.</p>
+                    {% endif %}
+                </div>
+                
+                <div id="approaching-crosses" class="tab-content">
+                    {% if latest_scan_results.approaching_crosses %}
+                        <ul class="stock-list">
+                            {% for symbol in latest_scan_results.approaching_crosses %}
+                                <li class="stock-item" data-symbol="{{ symbol }}">
+                                    <span class="symbol">{{ symbol }}</span>
+                                    <button class="view-details">View Details</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="no-results">No approaching golden crosses detected in the latest scan.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="stocks-section">
+            <div class="card">
+                <h2>Monitored Stocks</h2>
+                <p>Total: {{ stock_symbols|length }} stocks</p>
+                <div class="stock-grid">
+                    {% for symbol in stock_symbols %}
+                        <div class="stock-card" data-symbol="{{ symbol }}">
+                            <h3>{{ symbol }}</h3>
+                            <button class="view-details">View Details</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <div id="stock-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2 id="modal-title">Stock Details</h2>
+                <div id="modal-content">
+                    <div class="loading">Loading...</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="stock-chart"></canvas>
+                </div>
+                <div class="indicators-container">
+                    <div class="indicator-section">
+                        <h3>RSI</h3>
+                        <div class="chart-container">
+                            <canvas id="rsi-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="indicator-section">
+                        <h3>MACD</h3>
+                        <div class="chart-container">
+                            <canvas id="macd-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="indicator-section">
+                        <h3>Stochastic Oscillator</h3>
+                        <div class="chart-container">
+                            <canvas id="stochastic-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="indicator-section">
+                        <h3>Bollinger Bands</h3>
+                        <p>Bollinger Bands are displayed on the main price chart.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Tadawul Golden Cross Alert</p>
+    </footer>
+
+    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+</body>
+</html>

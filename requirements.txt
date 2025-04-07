@@ -1,0 +1,12 @@
+python-dotenv
+yfinance
+pandas
+pytest
+pytest-mock
+black
+fastapi
+uvicorn
+jinja2
+pytest-cov
+httpx  # Required for TestClient
+pandas-ta

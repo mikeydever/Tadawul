@@ -1,0 +1,5 @@
+# List of Tadawul stock symbols to scan (one per line)
+# Ensure symbols end with .SR for yfinance compatibility
+2222.SR
+1120.SR
+7010.SR
