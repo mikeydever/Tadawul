@@ -2,38 +2,46 @@
 
 ## 1. Project Goal
 
-To develop an automated application that scans stocks listed on the Saudi Stock Exchange (Tadawul) daily to identify potential "Golden Cross" technical patterns (50-day SMA crossing above 200-day SMA). The application will notify the user (initially via email) when such patterns are detected.
+To develop an automated application that scans stocks listed on the Saudi Stock Exchange (Tadawul) daily to identify potential "Golden Cross" technical patterns (50-day SMA crossing above 200-day SMA) and other relevant technical indicators. The application will provide a web interface for viewing results and triggering scans, and optionally notify users (initially via email) when specific patterns are detected.
 
-## 2. Core Features (MVP - Phase 1)
+## 2. Core Features
 
 -   **Data Fetching:** Retrieve daily End-of-Day (EOD) price data for specified Tadawul stocks.
--   **SMA Calculation:** Calculate the 50-day and 200-day Simple Moving Averages (SMAs) for each stock.
--   **Golden Cross Detection:** Identify stocks where the 50-day SMA has crossed above the 200-day SMA on the most recent trading day.
--   **Notification:** Send an email alert listing the stocks that triggered the golden cross signal.
--   **Configuration:** Load necessary settings (e.g., email credentials, potentially stock list) from environment variables.
--   **Logging:** Basic logging of operations and errors.
+-   **Indicator Calculation:** Calculate 50-day/200-day SMAs, RSI, MACD, Bollinger Bands, Stochastic Oscillator.
+-   **Pattern Detection:** Identify Golden Crosses and potentially other patterns (e.g., approaching crosses, Death Crosses).
+-   **Web Interface:** Provide a UI to view monitored stocks, trigger scans, see scan results, and view detailed stock charts with technical indicators.
+-   **(Optional) Notification:** Send email alerts for detected patterns (if configured).
+-   **Configuration:** Load necessary settings (e.g., email credentials, stock list) from environment variables or configuration files.
+-   **Logging:** Logging of backend operations and errors.
+-   **(Future) User Accounts:** Allow users to register/login to receive personalized alerts.
 
 ## 3. Technology Stack
 
 -   **Language:** Python 3.x
+-   **Backend Framework:** FastAPI
+-   **Web Server:** Uvicorn
+-   **Frontend Framework/UI:** React (or Next.js - typical for shadcn/ui)
+-   **UI Components:** shadcn/ui
+-   **CSS Framework:** Tailwind CSS
+-   **Charting:** Chart.js (or similar JavaScript library)
 -   **Data Handling:** pandas
--   **Initial Data Source:** yfinance (Note: Plan to replace with a more robust API in Phase 2 due to potential reliability issues).
+-   **Initial Data Source:** yfinance (Note: Plan to replace with a more robust API due to potential reliability issues).
 -   **Configuration:** python-dotenv
 -   **Testing:** pytest, pytest-mock
 -   **Formatting:** black
 -   **Linting/Style:** PEP8, Type Hints
--   **Dependency Management:** requirements.txt
+-   **Dependency Management:** requirements.txt (Python), package.json (Node.js/Frontend)
+-   **(Future) Database:** SQLAlchemy/SQLModel with SQLite/PostgreSQL (for user accounts)
 
-*(Future considerations: FastAPI for potential API, SQLAlchemy/SQLModel if database storage is added)*
+## 4. Architecture (Web Application)
 
-## 4. Architecture (Initial - Script-based)
-
--   A main script (`main.py`) will orchestrate the daily scan.
--   Modular structure:
+-   **Backend API:** A FastAPI application (`web/api.py` or similar) serves data and handles requests from the frontend.
+-   **Frontend:** A separate frontend application built with React/Next.js, using `shadcn/ui` components and Tailwind CSS for styling. Served as static files or via a Node.js server.
+-   **Backend Modules:**
     -   `scanner` module for data fetching and analysis logic.
     -   `notifier` module for handling email notifications.
-    -   `config` module for loading settings.
--   The script is intended to be run daily via a scheduler (e.g., cron, Task Scheduler, cloud scheduler).
--   No persistent database in the MVP.
+    *   `config` module for loading settings.
+    *   `(Future)` Database models and interaction logic.
+-   Scans can be triggered via the web UI (running as background tasks in FastAPI) or potentially run on a schedule.
 
-## 5. File Structure (Initial Plan)
+## 5. File Structure (Revised Plan - Example)

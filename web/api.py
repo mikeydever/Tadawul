@@ -12,10 +12,10 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 
 from fastapi import FastAPI, Request, BackgroundTasks
-from fastapi.responses import JSONResponse
-from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware # Import CORS Middleware
 import pandas as pd
 
 from config import settings
@@ -59,6 +59,20 @@ app = FastAPI(
     title="Tadawul Golden Cross Alert",
     description="Web interface for the Saudi Stock Exchange (Tadawul) Golden Cross Scanner",
     version="1.0.0",
+)
+
+# CORS Configuration
+origins = [
+    "http://localhost:3000", # Allow Next.js dev server
+    # Add other origins if needed (e.g., production frontend URL)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allow all headers
 )
 
 # Mount static files directory
