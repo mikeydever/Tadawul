@@ -241,6 +241,23 @@ function createStockChart(chartData, symbol) {
         chartData.map(item => item[longSmaKey] !== null ? item[longSmaKey] : null) :
         [];
 
+    // Extract Bollinger Band data if available
+    const hasBbData = chartData.length > 0 &&
+                      'BB_Upper' in chartData[0] &&
+                      'BB_Lower' in chartData[0] &&
+                      'BB_Middle' in chartData[0];
+
+    const bbUpper = hasBbData ?
+        chartData.map(item => item.BB_Upper !== null ? item.BB_Upper : null) :
+        [];
+    const bbLower = hasBbData ?
+        chartData.map(item => item.BB_Lower !== null ? item.BB_Lower : null) :
+        [];
+    const bbMiddle = hasBbData ?
+        chartData.map(item => item.BB_Middle !== null ? item.BB_Middle : null) :
+        [];
+        [];
+
     // Create the chart
     stockChart = new Chart(ctx, {
         type: 'line',
@@ -254,7 +271,8 @@ function createStockChart(chartData, symbol) {
                     backgroundColor: 'rgba(52, 152, 219, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1
+                    tension: 0.1,
+                    order: 0 // Draw price first
                 },
                 ...(shortSma.length > 0 ? [{
                     label: '50-Day SMA',
@@ -263,7 +281,8 @@ function createStockChart(chartData, symbol) {
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    fill: false
+                    fill: false,
+                    order: 1 // Draw short SMA after price
                 }] : []),
                 ...(longSma.length > 0 ? [{
                     label: '200-Day SMA',
@@ -272,8 +291,42 @@ function createStockChart(chartData, symbol) {
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    fill: false
-                }] : [])
+                    fill: false,
+                    order: 2 // Draw long SMA after short SMA
+                }] : []),
+                // Add Bollinger Bands datasets if data exists
+                ...(hasBbData ? [
+                    {
+                        label: 'BB Upper',
+                        data: bbUpper,
+                        borderColor: 'rgba(255, 159, 64, 0.5)', // Orange, semi-transparent
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        fill: '+1', // Fill to the dataset below (BB Lower)
+                        backgroundColor: 'rgba(255, 159, 64, 0.1)', // Light orange fill
+                        order: 4 // Ensure bands are drawn behind price/SMAs if needed
+                    },
+                    {
+                        label: 'BB Lower',
+                        data: bbLower,
+                        borderColor: 'rgba(255, 159, 64, 0.5)', // Orange, semi-transparent
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        fill: false, // Don't fill below this line itself
+                        backgroundColor: 'transparent', // No background for the line itself
+                        order: 5
+                    },
+                    {
+                        label: 'BB Middle',
+                        data: bbMiddle,
+                        borderColor: 'rgba(255, 159, 64, 0.8)', // Orange, more opaque
+                        borderDash: [5, 5], // Dashed line
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        fill: false,
+                        order: 3 // Draw middle band before upper/lower
+                    }
+                ] : [])
             ]
         },
         options: {
