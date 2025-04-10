@@ -30,19 +30,23 @@ describe('Home Page', () => {
     (fetch as jest.Mock).mockClear();
   });
 
-  it('should render loading state initially', () => {
+  it('should render loading state initially', async () => {
     // Mock the initial /api/results fetch to be pending indefinitely
     (fetch as jest.Mock).mockImplementation((url: string) => {
       if (url === '/api/results') {
-        return new Promise(() => {}); // Never resolves
+        // Return a promise that never resolves to keep the loading state
+        return new Promise(() => {});
       }
       return Promise.reject(new Error('Unexpected fetch call'));
     });
+    
     render(<Home />);
-    // Check for the "Loading..." text within the table body
-    expect(screen.getByRole('cell', { name: /Loading.../i })).toBeInTheDocument();
-    // Also check the caption
-    expect(screen.getByText(/Loading recent signals.../i)).toBeInTheDocument();
+    
+    // Wait for the loading state to be rendered
+    await waitFor(() => {
+      expect(screen.getByRole('cell', { name: /Loading.../i })).toBeInTheDocument();
+      expect(screen.getByText(/Loading recent signals.../i)).toBeInTheDocument();
+    });
   });
 
   it('should render stock data after successful fetches', async () => {
@@ -61,12 +65,18 @@ describe('Home Page', () => {
 
     (fetch as jest.Mock).mockImplementation(async (url: string) => {
       if (url === '/api/results') {
-        return { ok: true, json: async () => mockResults };
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockResults,
+        });
       }
       if (url === '/api/stock/2222.SR') {
-        return { ok: true, json: async () => mockStockDetails };
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockStockDetails,
+        });
       }
-      throw new Error(`Unexpected fetch call to ${url}`);
+      return Promise.reject(new Error(`Unexpected fetch call to ${url}`));
     });
 
     render(<Home />);
@@ -75,25 +85,24 @@ describe('Home Page', () => {
     // Check for symbol, date, and SMA values from the *last* entry in mockStockDetails.chart_data
     await waitFor(() => {
       expect(screen.getByRole('cell', { name: '2222.SR' })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '2025-04-09' })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '34.00' })).toBeInTheDocument(); // Formatted SMA50
+      expect(screen.getByRole('cell', { name: '33.00' })).toBeInTheDocument(); // Formatted SMA200
+      // Check caption update
+      expect(screen.getByText(/Recent Golden Cross Signals/i)).toBeInTheDocument();
+      // Check last scan time update
+      expect(screen.getByText(/Last Scan: 2025-04-09 21:00:00 UTC/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('cell', { name: '2025-04-09' })).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: '34.00' })).toBeInTheDocument(); // Formatted SMA50
-    expect(screen.getByRole('cell', { name: '33.00' })).toBeInTheDocument(); // Formatted SMA200
-    // Check caption update
-    expect(screen.getByText(/Recent Golden Cross Signals/i)).toBeInTheDocument();
-    // Check last scan time update
-    expect(screen.getByText(/Last Scan: 2025-04-09 21:00:00 UTC/i)).toBeInTheDocument();
   });
 
   it('should render error message on fetch failure for /api/results', async () => {
     const apiError = new Error('API Error Results');
-     (fetch as jest.Mock).mockImplementation(async (url: string) => {
+    (fetch as jest.Mock).mockImplementation(async (url: string) => {
       if (url === '/api/results') {
-         throw apiError;
+        return Promise.reject(apiError);
       }
-       throw new Error(`Unexpected fetch call to ${url}`);
+      return Promise.reject(new Error(`Unexpected fetch call to ${url}`));
     });
-
 
     render(<Home />);
 
@@ -101,12 +110,12 @@ describe('Home Page', () => {
     await waitFor(() => {
       // Check for the error message format used in the component
       expect(screen.getByText(`Error loading data: ${apiError.message}`)).toBeInTheDocument();
+      // Check caption update
+      expect(screen.getByText(/No recent signals found./i)).toBeInTheDocument();
     });
-     // Check caption update
-    expect(screen.getByText(/No recent signals found./i)).toBeInTheDocument();
   });
 
-   it('should render error message on fetch failure for /api/stock/{symbol}', async () => {
+  it('should render error message on fetch failure for /api/stock/{symbol}', async () => {
     const mockResults = {
       golden_crosses: ['2222.SR'], // Need a symbol to trigger the second fetch
       last_scan_time: '2025-04-09 21:00:00 UTC',
@@ -115,24 +124,25 @@ describe('Home Page', () => {
 
     (fetch as jest.Mock).mockImplementation(async (url: string) => {
       if (url === '/api/results') {
-        return { ok: true, json: async () => mockResults };
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockResults,
+        });
       }
       if (url === '/api/stock/2222.SR') {
-         throw stockApiError; // Fail the second fetch
+        return Promise.reject(stockApiError); // Fail the second fetch
       }
-      throw new Error(`Unexpected fetch call to ${url}`);
+      return Promise.reject(new Error(`Unexpected fetch call to ${url}`));
     });
 
     render(<Home />);
 
     // Wait for the error message to appear
     // The component catches the error and sets the general error state
-     await waitFor(() => {
+    await waitFor(() => {
       expect(screen.getByText(`Error loading data: ${stockApiError.message}`)).toBeInTheDocument();
+      // Check caption update
+      expect(screen.getByText(/No recent signals found./i)).toBeInTheDocument();
     });
-     // Check caption update
-    expect(screen.getByText(/No recent signals found./i)).toBeInTheDocument();
   });
-
-
 });
