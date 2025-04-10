@@ -8,23 +8,56 @@ triggering scans, and managing configuration.
 import json
 import logging
 import numpy as np
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, AsyncGenerator
+from datetime import timedelta # Import timedelta
 
-from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi import FastAPI, Request, BackgroundTasks, Depends, HTTPException, status, Header
+from web.security import decode_access_token, get_email_from_token
+from web.db import get_user_by_email
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm # Import OAuth2 helpers
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware # Import CORS Middleware
 import pandas as pd
+from sqlmodel import SQLModel, Session, select # Import SQLModel, Session, and select
 
 from config import settings
 from scanner.analysis import calculate_indicators, check_golden_cross, check_approaching_golden_cross
 from scanner.data_fetcher import fetch_stock_data
-from main import run_scan
+from main import run_scan # Assuming main.py has run_scan, might need adjustment if structure changed
+from web.db import create_db_and_tables, get_db # Import the function and dependency
+from web.models import User # Import the User model
+from web.security import get_password_hash, verify_password, create_access_token, decode_access_token, get_email_from_token # Import security functions
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+# --- Pydantic/SQLModel Schemas for User ---
+
+class UserBase(SQLModel):
+    email: str
+
+class UserCreate(UserBase):
+    password: str # Plain password received from client
+
+class UserRead(UserBase):
+    id: int
+    # email: str # Inherited from UserBase
+    # Exclude password hash from response
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str
+
+class TokenData(SQLModel):
+    email: Optional[str] = None
+
+# OAuth2 scheme (optional, but good practice for dependency injection later)
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login") # Points to the login endpoint itself
 
 
 # Custom JSON encoder to handle NaN values
@@ -53,12 +86,27 @@ def safe_json_response(content: Any) -> JSONResponse:
     json_str = json.dumps(content, cls=CustomJSONEncoder)
     return JSONResponse(content=json.loads(json_str))
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Application lifespan context manager.
+    Called once on startup and once on shutdown.
+    """
+    logger.info("Application startup...")
+    # Create database tables on startup
+    # Note: This requires all SQLModel models to be imported somewhere
+    # before this is called. Ensure models are imported in web.models or similar.
+    create_db_and_tables()
+    yield
+    logger.info("Application shutdown.")
 
-# Create FastAPI app
+
+# Create FastAPI app with lifespan manager
 app = FastAPI(
     title="Tadawul Golden Cross Alert",
     description="Web interface for the Saudi Stock Exchange (Tadawul) Golden Cross Scanner",
     version="1.0.0",
+    lifespan=lifespan, # Add the lifespan manager
 )
 
 # CORS Configuration
@@ -188,6 +236,89 @@ async def get_stock_data(symbol: str):
             error_message = f"Insufficient data to calculate moving averages for {symbol}."
         
         return safe_json_response({"status": "error", "message": error_message})
+
+
+# --- User Authentication Endpoints ---
+
+@app.post("/api/users/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+async def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
+    """
+    Register a new user.
+    """
+    # Check if user already exists
+    existing_user = db.exec(select(User).where(User.email == user_in.email)).first()
+    if existing_user:
+        logger.warning(f"Registration attempt for existing email: {user_in.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    # Hash the password
+    try:
+        hashed_password = get_password_hash(user_in.password)
+    except ValueError as e:
+        logger.error(f"Password hashing failed during registration for {user_in.email}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not process registration.",
+        )
+
+    # Create new user object
+    db_user = User(email=user_in.email, hashed_password=hashed_password)
+
+    # Add to database
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        logger.info(f"User registered successfully: {db_user.email}")
+        # Return UserRead model (automatically excludes password)
+        return db_user
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database error during user registration for {user_in.email}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not register user.",
+        )
+
+
+@app.post("/api/users/login", response_model=Token)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+):
+    """
+    Authenticate user and return JWT access token.
+    Uses OAuth2PasswordRequestForm for standard username/password form data.
+    """
+    # 1. Find user by email (username field in the form)
+    user = db.exec(select(User).where(User.email == form_data.username)).first()
+
+    # 2. Check if user exists and verify password
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        logger.warning(f"Failed login attempt for email: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"}, # Standard for token-based auth
+        )
+
+    # 3. Create access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    try:
+        access_token = create_access_token(
+            data={"sub": user.email}, expires_delta=access_token_expires
+        )
+        logger.info(f"User logged in successfully: {user.email}")
+        return {"access_token": access_token, "token_type": "bearer"}
+    except ValueError:
+        # Error during token creation
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not create access token.",
+        )
+
 
 
 def perform_scan():

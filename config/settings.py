@@ -133,4 +133,28 @@ TREND_DAYS: int = 5  # Check if short SMA has been rising for this many days
 
 logger.info(f"Configuration loaded successfully. {len(STOCK_SYMBOLS)} stocks to scan.")
 
+# --- Database Settings ---
+# Default to a SQLite database file in the project root
+DEFAULT_DB_URL = "sqlite:///./ksa_scanner.db"
+try:
+    DATABASE_URL: str = get_env_variable("DATABASE_URL", DEFAULT_DB_URL)
+    logger.info(f"Using database URL: {DATABASE_URL}")
+except ValueError:
+    # This case should ideally not happen with a default, but handle defensively
+    logger.error("Could not determine DATABASE_URL.")
+    DATABASE_URL = "" # Or raise an error if DB is absolutely required
+
+# --- JWT Settings ---
+# IMPORTANT: Replace the default SECRET_KEY with a strong, unique secret in your .env file or environment!
+# You can generate one using: openssl rand -hex 32
+DEFAULT_SECRET_KEY = "8a51955506fb19ece78e6dd9575affe3459dd8c523c92cdacb3a11eefa297623"
+SECRET_KEY: str = get_env_variable("SECRET_KEY", DEFAULT_SECRET_KEY)
+ALGORITHM: str = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES: int = 30 # Token validity period
+
+logger.info(f"JWT configured with algorithm {ALGORITHM} and {ACCESS_TOKEN_EXPIRE_MINUTES} min expiry.")
+if SECRET_KEY == DEFAULT_SECRET_KEY:
+    logger.warning("Using default SECRET_KEY. Please replace it with a strong, unique secret for production!")
+
+
 # You can add more settings here as needed

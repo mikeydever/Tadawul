@@ -40,17 +40,18 @@
 -   [x] Add basic navigation/layout using shadcn/ui components. (2025-04-07)
 -   [x] Update backend API (`web/api.py`) for CORS to support the new frontend. (2025-04-07)
 -   [x] Implement frontend display (charts/visualizations) for RSI, MACD, and Stochastic Oscillator in the stock details view. (2025-04-07)
--   [ ] **Fix Bug:** Bollinger Bands are calculated and mentioned in the UI, but are not visually rendered on the main price chart in the stock details view. Ensure they are correctly overlaid.
--   [ ] Add unit/integration tests for the new frontend components.
+-   [x] **Fix Bug:** Bollinger Bands are calculated and mentioned in the UI, but are not visually rendered on the main price chart in the stock details view. Ensure they are correctly overlaid.
+-   [x] Add unit/integration tests for the new frontend components. (2025-04-09)
 
 ## User Accounts & Personalized Alerts (Phase 3 - Future)
 
--   [ ] Choose and integrate a database (e.g., SQLite with SQLAlchemy).
--   [ ] Define User model (email, hashed_password).
--   [ ] Implement password hashing (e.g., using passlib).
+-   [x] Choose and integrate a database (e.g., SQLite with SQLModel). (2025-04-09)
+-   [x] Define User model (email, hashed_password). (2025-04-09)
+-   [x] Implement password hashing (e.g., using passlib). (2025-04-09)
 -   [x] Create backend API endpoints for user registration. (2025-04-07 - Backend only)
--   [ ] Create backend API endpoints for user login (e.g., returning JWT token).
--   [ ] Implement token-based authentication for protected API endpoints.
+-   [x] Create backend API endpoints for user login (e.g., returning JWT token). (2025-04-09)
+-   [x] Implement token-based authentication for protected API endpoints. (2025-04-09)
+-   [x] Fix SQLModel import error and run tests successfully. (2025-04-09)
 -   [ ] Create frontend registration page/form. (Currently missing)
 -   [ ] Create frontend login page/form.
 -   [ ] Implement frontend logic to handle login tokens/sessions and protect routes.
